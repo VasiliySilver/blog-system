@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  posts-db:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: blog_posts
+    ports:
+      - "5432:5432"
+    volumes:
+      - posts-db-data:/var/lib/postgresql/data
+
+  posts-service:
+    build:
+      context: .
+      dockerfile: posts-service/Dockerfile
+    environment:
+      DATABASE_URL: "host=posts-db user=postgres password=postgres dbname=blog_posts port=5432 sslmode=disable"
+    ports:
+      - "50051:50051"
+      - "2112:2112"
+    depends_on:
+      - posts-db
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - posts-service
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  posts-db-data:
+  grafana-data:
